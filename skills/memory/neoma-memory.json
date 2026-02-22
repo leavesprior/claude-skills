@@ -1,0 +1,135 @@
+{
+  "name": "neoma-memory",
+  "version": "1.0.0",
+  "description": "Neoma Memory Bridge - persistent storage and retrieval for multi-agent system state, configuration, and knowledge",
+  "author": "Neoma Project",
+  "type": "http-api",
+  "capabilities": [
+    "persistent-storage",
+    "key-value-store",
+    "namespace-organization",
+    "agent-state-management",
+    "configuration-storage",
+    "knowledge-base"
+  ],
+  "api_endpoints": [
+    {
+      "name": "store",
+      "method": "POST",
+      "endpoint": "http://127.0.0.1:8115/store",
+      "description": "Store data in Neoma memory with namespace and key",
+      "parameters": {
+        "namespace": {
+          "type": "string",
+          "required": true,
+          "description": "Category/namespace for organization (e.g., system_config, preferences, tasks)"
+        },
+        "key": {
+          "type": "string",
+          "required": true,
+          "description": "Unique key within namespace"
+        },
+        "value": {
+          "type": "object",
+          "required": true,
+          "description": "Data to store (JSON object)"
+        }
+      },
+      "response": {
+        "ok": "boolean",
+        "path": "string - file path where data was stored"
+      }
+    },
+    {
+      "name": "retrieve",
+      "method": "GET",
+      "endpoint": "http://127.0.0.1:8115/retrieve/{namespace}/{key}",
+      "description": "Retrieve stored data by namespace and key",
+      "parameters": {
+        "namespace": {
+          "type": "string",
+          "required": true,
+          "description": "Namespace to search in"
+        },
+        "key": {
+          "type": "string",
+          "required": true,
+          "description": "Key to retrieve"
+        }
+      },
+      "response": "Stored JSON object or error"
+    },
+    {
+      "name": "list",
+      "method": "GET",
+      "endpoint": "http://127.0.0.1:8115/list/{namespace}",
+      "description": "List all keys in a namespace",
+      "parameters": {
+        "namespace": {
+          "type": "string",
+          "required": true,
+          "description": "Namespace to list"
+        }
+      },
+      "response": "Array of key names"
+    },
+    {
+      "name": "health",
+      "method": "GET",
+      "endpoint": "http://127.0.0.1:8115/health",
+      "description": "Check memory bridge health status",
+      "response": {
+        "status": "string",
+        "service": "string",
+        "port": "number"
+      }
+    }
+  ],
+  "usage": {
+    "when_to_use": [
+      "Saving configuration for later sessions",
+      "Storing system state and preferences",
+      "Building knowledge base across conversations",
+      "Tracking tasks and pending work",
+      "Sharing data between Neoma agents",
+      "Persisting important decisions and settings"
+    ],
+    "common_namespaces": [
+      "system_config - System and agent configurations",
+      "preferences - User preferences and settings",
+      "tasks - Pending tasks and work items",
+      "fixes - Applied fixes and solutions",
+      "skills - Skill configurations and metadata",
+      "agents - Agent-specific state and data"
+    ],
+    "best_practices": [
+      "Use descriptive namespaces for organization",
+      "Store JSON objects for structured data",
+      "Include metadata (timestamp, version, etc.)",
+      "Use consistent key naming conventions",
+      "Document important stored configurations"
+    ]
+  },
+  "neoma_integration": {
+    "agent_port": 8115,
+    "agent_type": "memory-persistence",
+    "storage_path": "~/Neoma_project/memory/",
+    "format": "JSON files organized by namespace",
+    "multi_agent_access": true,
+    "status": "core infrastructure - always available"
+  },
+  "examples": [
+    {
+      "description": "Store a configuration",
+      "command": "curl -X POST http://127.0.0.1:8115/store -H 'Content-Type: application/json' -d '{\"namespace\":\"system_config\",\"key\":\"my_setting\",\"value\":{\"enabled\":true,\"version\":\"1.0\"}}'"
+    },
+    {
+      "description": "Retrieve a configuration",
+      "command": "curl http://127.0.0.1:8115/retrieve/system_config/my_setting"
+    },
+    {
+      "description": "List all system configs",
+      "command": "curl http://127.0.0.1:8115/list/system_config"
+    }
+  ]
+}

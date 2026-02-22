@@ -1,0 +1,75 @@
+{
+  "name": "serena",
+  "version": "1.0.0",
+  "description": "Serena web scraping and fetching agent - delegates web content retrieval to reduce token usage",
+  "author": "Neoma Project",
+  "type": "mcp-tool",
+  "capabilities": [
+    "web-scraping",
+    "url-fetching",
+    "web-search",
+    "content-extraction"
+  ],
+  "tools": [
+    {
+      "name": "serena_fetch_url",
+      "description": "Fetch content from a URL using Serena web scraping agent",
+      "parameters": {
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "The URL to fetch"
+        },
+        "format": {
+          "type": "string",
+          "required": false,
+          "default": "text",
+          "enum": ["text", "markdown", "json"],
+          "description": "Response format"
+        }
+      }
+    },
+    {
+      "name": "serena_search",
+      "description": "Search the web using Serena and return results",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "Search query"
+        },
+        "num_results": {
+          "type": "number",
+          "required": false,
+          "default": 5,
+          "description": "Number of results to return"
+        }
+      }
+    }
+  ],
+  "mcp_server": "serena",
+  "integration": {
+    "type": "http-bridge",
+    "bridge_path": "/home/granny/.local/bin/serena-mcp-http-bridge",
+    "http_endpoint": "http://127.0.0.1:8121",
+    "queue_api": "/act",
+    "health_check": "/health"
+  },
+  "usage": {
+    "when_to_use": [
+      "Fetching web page content",
+      "Scraping website data",
+      "Searching the web for information",
+      "Retrieving documentation from URLs",
+      "Extracting content from online sources"
+    ],
+    "token_optimization": "Delegates web fetching to Serena agent to reduce Claude Code token consumption",
+    "note": "Currently requires worker process to process queued tasks"
+  },
+  "neoma_integration": {
+    "agent_port": 8121,
+    "agent_type": "web-scraping",
+    "memory_ref": "system_config/serena_mcp_http_bridge",
+    "documentation": "/media/granny/larger SSD/Neoma_project/docs/SERENA_MCP_SETUP.md"
+  }
+}
