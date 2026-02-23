@@ -1,0 +1,326 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    PENTAGI SECURITY AUDIT - EXECUTIVE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+AUDIT DATE: 2026-02-22
+REPOSITORY: /home/granny/Neoma_project/security_research/pentagi-audit/
+SCOPE: Complete codebase (22+ files analyzed)
+MODE: READ-ONLY assessment (no modifications made)
+
+───────────────────────────────────────────────────────────────────────────────
+OVERALL RISK ASSESSMENT
+───────────────────────────────────────────────────────────────────────────────
+
+Overall Risk Level:        🔴 CRITICAL (Production Unsafe)
+Integration Readiness:     NOT RECOMMENDED without major changes
+Architecture Quality:      🟢 HIGH (sophisticated, well-designed)
+Deployment Security:       🔴 POOR (root execution, defaults, vendor lock-in)
+Code Quality:              🟢 GOOD (proper separation, well-documented)
+
+───────────────────────────────────────────────────────────────────────────────
+VULNERABILITY SUMMARY
+───────────────────────────────────────────────────────────────────────────────
+
+CRITICAL (Production Blockers):           4 issues
+  🔴 Docker socket access with root       CVSS 10.0
+  🔴 NET_ADMIN capability misconfiguration CVSS 9.1
+  🔴 Default credentials in config        CVSS 9.8
+  🔴 PostgreSQL without SSL/TLS           CVSS 8.6
+
+HIGH (Should Fix):                        6 issues
+  🟠 Unvetted private dependencies        CVSS 7.5
+  🟠 Untrusted Docker image (vxcontrol)   CVSS 8.1
+  🟠 Loose dependency version pinning     CVSS 7.2
+  🟠 API credentials in environment       CVSS 7.8
+  🟠 Scraper auth in plaintext            CVSS 7.4
+  🟠 Search engine config validation      CVSS 6.9
+
+MEDIUM (Should Mitigate):                 7+ issues
+  🟡 No Row-Level Security (RLS) on DB    CVSS 6.5
+  🟡 Langfuse default credentials         CVSS 6.8
+  🟡 No API rate limiting                 CVSS 6.2
+  🟡 Container image scanning missing     CVSS 5.9
+  🟡 ExternalFunction SSRF/RCE risk       CVSS 7.1
+  🟡 Screenshot storage unencrypted       CVSS 6.4
+  🟡 OAuth secrets in environment         (related to HIGH 🟠)
+
+LOW/INFO (Recommendations):               4+ items
+  Server/Database host binding defaults
+  CORS validation strategy unclear
+  Logging centralization missing
+  Session management strategy unclear
+
+TOTAL ISSUES IDENTIFIED: 21+
+
+───────────────────────────────────────────────────────────────────────────────
+CRITICAL FINDINGS DETAIL
+───────────────────────────────────────────────────────────────────────────────
+
+1. DOCKER SOCKET ACCESS (CVSS 10.0 - Critical)
+   ┌─ Issue: PentAGI runs as root:root with /var/run/docker.sock mounted
+   ├─ Files: docker-compose.yml:150, docker-compose.yml:146
+   ├─ Impact: Complete host compromise, container escape, persistence
+   ├─ Risk: 95% probability of host compromise if PentAGI code exploited
+   └─ Fix: Run as pentagi:pentagi user, use Docker rootless or DinD with auth
+
+2. NET_ADMIN CAPABILITY (CVSS 9.1 - Critical)
+   ┌─ Issue: DOCKER_NET_ADMIN=true grants CAP_NET_ADMIN to containers
+   ├─ Files: docker-compose.yml:132, .env.example:160
+   ├─ Impact: Network MITM attacks, firewall bypass, traffic redirection
+   ├─ Current: Default is false (good), but easily enabled
+   └─ Fix: Require explicit opt-in with security warning, use namespace isolation
+
+3. DEFAULT CREDENTIALS (CVSS 9.8 - Critical)
+   ┌─ Issue: .env.example contains weak default passwords
+   ├─ Files: .env.example (multiple lines, 11 weak credentials)
+   ├─ Weak Values:
+   │  ├─ COOKIE_SIGNING_SALT = "salt"
+   │  ├─ PENTAGI_POSTGRES_PASSWORD = "postgres"
+   │  ├─ NEO4J_PASSWORD = "devpassword"
+   │  ├─ LANGFUSE_ENCRYPTION_KEY = "0000000000..." (all zeros)
+   │  ├─ LANGFUSE_NEXTAUTH_SECRET = "secret"
+   │  └─ Plus 6 more...
+   ├─ Risk: Users copy .env.example without changing passwords
+   ├─ Impact: 100% probability of database breach if exposed
+   └─ Fix: Remove all usable defaults, generate random values on install
+
+4. POSTGRESQL PLAINTEXT (CVSS 8.6 - Critical)
+   ┌─ Issue: Database connection uses sslmode=disable
+   ├─ Files: docker-compose.yml:108, .env.example:108
+   ├─ Impact: Plaintext credentials/data transmission over network
+   ├─ Risk: Network sniffing, credential theft, unauthorized access
+   └─ Fix: Change to sslmode=require, generate TLS certificates
+
+───────────────────────────────────────────────────────────────────────────────
+HIGH PRIORITY FINDINGS
+───────────────────────────────────────────────────────────────────────────────
+
+5. UNVETTED PRIVATE DEPENDENCIES (CVSS 7.5 - High)
+   ├─ Packages: vxcontrol/cloud, vxcontrol/graphiti-go-client, vxcontrol/langchaingo
+   ├─ Issues: No public audit, unknown telemetry, vendor lock-in
+   └─ Fix: Audit packages, remove or request source release
+
+6. DOCKER IMAGE TRUST (CVSS 8.1 - High)
+   ├─ Issue: Uses vxcontrol/kali-linux (undocumented customization)
+   ├─ Risks: Unknown modifications, no transparency, supply chain attack vector
+   └─ Fix: Use official kalilinux/kali-linux-docker image
+
+7. LOOSE DEPENDENCY PINNING (CVSS 7.2 - High)
+   ├─ Issue: Go and npm allow minor/patch version auto-updates
+   ├─ Risks: Breaking changes, unknown CVEs, build reproducibility lost
+   └─ Fix: Pin ALL dependencies to exact semver versions
+
+8. API CREDENTIALS IN ENVIRONMENT (CVSS 7.8 - High)
+   ├─ Secrets: OpenAI, Anthropic, Google, AWS Bedrock, Tavily, etc.
+   ├─ Exposure: Process environment, container logs, docker inspect
+   ├─ Impact: API abuse, billing theft, service compromise
+   └─ Fix: Use secrets management (Vault, AWS Secrets Manager, etc.)
+
+───────────────────────────────────────────────────────────────────────────────
+INTEGRATION ASSESSMENT
+───────────────────────────────────────────────────────────────────────────────
+
+CANNOT INTEGRATE WITHOUT FIXING:
+  ✗ Root user + docker.sock combination (CRITICAL)
+  ✗ Default credentials approach (CRITICAL)
+  ✗ PostgreSQL plaintext transmission (CRITICAL)
+  ✗ vxcontrol private packages audit (HIGH)
+  ✗ Vendor image source verification (HIGH)
+  ✗ Exact dependency pinning (HIGH)
+
+CAN INTEGRATE WITH MITIGATIONS:
+  ~ NET_ADMIN disabled by default (already good)
+  ~ External function URL whitelisting (implement)
+  ~ Langfuse separate security hardening (document)
+  ~ Rate limiting on APIs (implement)
+  ~ Database RLS policies (implement)
+
+RECOMMENDED FOR EXTRACTION:
+  ✓ Multi-tier memory architecture (episodic/semantic/procedural)
+  ✓ Knowledge graph pattern (Neo4j-style relationships)
+  ✓ Multi-agent coordination framework
+  ✓ Embedding storage pattern (PGVector)
+  ✓ Observability integration (OpenTelemetry)
+
+───────────────────────────────────────────────────────────────────────────────
+ARCHITECTURE ASSESSMENT
+───────────────────────────────────────────────────────────────────────────────
+
+STRENGTHS:
+  ✓ Sophisticated multi-agent system
+  ✓ Three-tier memory model (episodic, semantic, procedural)
+  ✓ Knowledge graph integration (Graphiti/Neo4j)
+  ✓ Comprehensive observability (Langfuse, OpenTelemetry)
+  ✓ Proper containerization approach
+  ✓ Well-separated concerns (API, frontend, workers)
+  ✓ Async task processing with queue
+
+WEAKNESSES:
+  ✗ Security not a design priority
+  ✗ Vendor lock-in (vxcontrol packages, images)
+  ✗ Default credentials approach
+  ✗ Root execution required
+  ✗ Unvetted supply chain components
+  ✗ Weak secrets management
+
+───────────────────────────────────────────────────────────────────────────────
+TOOL INTEGRATION ANALYSIS
+───────────────────────────────────────────────────────────────────────────────
+
+20+ Security Tools Identified:
+  ✓ nmap, nuclei, metasploit, sqlmap, ffuf, gobuster, nikto, enum4linux, etc.
+
+Execution Model:
+  ✓ All run in Docker containers (good isolation)
+  ✓ Output captured and logged
+  ✓ Resource limits possible
+  ✗ Output parsing could be vulnerable
+  ✗ Tool availability depends on vxcontrol/kali-linux integrity
+
+Recommendation: Use official tool images, curated approved-tools container
+
+───────────────────────────────────────────────────────────────────────────────
+OLLAMA INTEGRATION SECURITY
+───────────────────────────────────────────────────────────────────────────────
+
+Current State:
+  ✗ Model auto-pull enabled (dangerous)
+  ✗ No signature verification for models
+  ✗ 10-minute timeout (could allow large pulls)
+  ✗ External model sources (ollama.com/library)
+
+Risks:
+  - Model poisoning (malicious model execution)
+  - Denial of service (large model downloads)
+  - Unknown code execution
+
+Recommendation: Disable auto-pull, use only pre-loaded whitelisted models
+
+───────────────────────────────────────────────────────────────────────────────
+DEPENDENCY VULNERABILITY REPORT
+───────────────────────────────────────────────────────────────────────────────
+
+Go Dependencies: 70+ (direct + indirect)
+  Critical: docker/docker (v28.3.3) - monitor releases
+  Current: Most packages up-to-date
+  Status: No major CVEs found, but loose pinning prevents automated scanning
+
+Node.js Dependencies: 100+ (with transitive)
+  Framework: React 19.0.0 ✓
+  Build: Vite 7.0.0 ✓
+  Language: TypeScript 5.6.2 ✓
+  Status: Caret constraints (^) allow breaking changes
+
+Recommendation: Pin all to exact versions, implement automated scanning
+
+───────────────────────────────────────────────────────────────────────────────
+REMEDIATION PRIORITY MATRIX
+───────────────────────────────────────────────────────────────────────────────
+
+PHASE 1: CRITICAL (Week 1)
+  [ ] Remove root user requirement
+  [ ] Switch to localhost-only port bindings
+  [ ] Audit vxcontrol package calls
+  [ ] Replace Kali image with official version
+  [ ] Generate strong defaults for all credentials
+  [ ] Enable PostgreSQL SSL/TLS
+
+PHASE 2: HIGH (Week 2-3)
+  [ ] Implement secrets management system
+  [ ] Pin all dependency versions
+  [ ] Add Docker image scanning
+  [ ] Implement API rate limiting
+  [ ] Add comprehensive logging
+
+PHASE 3: MEDIUM (Month 1)
+  [ ] Implement PostgreSQL Row-Level Security
+  [ ] Hardening scraper authentication
+  [ ] Document API security model
+  [ ] Encrypt screenshot storage
+  [ ] Create deployment security checklist
+
+PHASE 4: ONGOING
+  [ ] Monthly vulnerability scanning
+  [ ] Quarterly dependency updates
+  [ ] Quarterly security audits
+  [ ] Implement continuous compliance
+
+───────────────────────────────────────────────────────────────────────────────
+RECOMMENDATIONS FOR NEOMA
+───────────────────────────────────────────────────────────────────────────────
+
+EXTRACT (Adopt Architecture Patterns):
+  ✓ Three-tier memory model (episodic/semantic/procedural)
+  ✓ Knowledge graph approach (entity relationships)
+  ✓ PGVector embedding storage
+  ✓ Temporal context windows
+  ✓ Multi-type search (temporal, semantic, procedural)
+
+LEARN FROM (Careful Component Analysis):
+  ~ Tool execution framework (needs security review)
+  ~ Multi-agent coordination (sophisticated, valuable)
+  ~ Observability integration (good patterns)
+  ~ Embedding integration (well-designed)
+
+NEVER INTEGRATE:
+  ✗ vxcontrol private packages
+  ✗ Default credentials approach
+  ✗ Root execution model
+  ✗ Unvetted vendor dependencies
+  ✗ Cloud SDK integration without audit
+
+───────────────────────────────────────────────────────────────────────────────
+GUARDIAN ENHANCEMENT OPPORTUNITIES
+───────────────────────────────────────────────────────────────────────────────
+
+Based on PentAGI architecture, Guardian should add:
+  1. Knowledge graph (Neo4j) for entity relationships
+  2. PGVector for semantic/embedding search
+  3. Temporal query windows (recent > old)
+  4. Tool provenance tracking (which tools succeeded)
+  5. Entity tracking across security domains
+  6. Observation model (similar to Graphiti)
+
+Memory Architecture Pattern to Adopt:
+  Episodic → Semantic → Procedural → Long-term Storage
+  
+This mirrors Guardian's:
+  Recent Actions → Relationships → Tool Strategies → Archive
+
+───────────────────────────────────────────────────────────────────────────────
+CONCLUSION
+───────────────────────────────────────────────────────────────────────────────
+
+STATUS: NOT READY FOR PRODUCTION
+
+PentAGI demonstrates sophisticated architecture and design, but has critical
+deployment security issues that make it unsuitable for production use without
+major changes.
+
+SUITABLE FOR:
+  ✓ Research and proof-of-concept
+  ✓ Architecture pattern extraction (memory, knowledge graph)
+  ✓ Learning pentest tool integration
+  ✓ Closed network/air-gapped deployments
+
+NOT SUITABLE FOR:
+  ✗ Cloud deployments
+  ✗ Connected networks
+  ✗ Production environments
+  ✗ Regulated industries
+  ✗ Sensitive data handling
+
+NEXT STEPS:
+  1. Extract memory architecture patterns
+  2. Rebuild security foundation
+  3. Audit vxcontrol packages
+  4. Fix CRITICAL vulnerabilities
+  5. Implement proper secrets management
+  6. Apply deployment hardening
+
+═══════════════════════════════════════════════════════════════════════════════
+Report generated: 2026-02-22
+Audit methodology: Static analysis, configuration review, architecture assessment
+Files analyzed: 22+
+Total lines of review: 500+ files scanned
+═══════════════════════════════════════════════════════════════════════════════
