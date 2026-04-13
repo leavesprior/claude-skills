@@ -42,6 +42,30 @@ Not for:
 - Wheelwright: `workspace.neoma_workspace_clone`
 - CLAUDE.md: "Standing Rules" section
 
+## Return-to-CLI contract (2026-04-13)
+
+Any `/ultraplan` session launched in this workspace **must** post its final plan back to Neoma's memory bridge so the local CLI surfaces it. Without this write, the remote session is a dead letter — the plan lives in a browser tab the user may never reopen.
+
+**On completion, the remote session runs:**
+
+```bash
+source /home/granny/.config/neoma/mb_auth.env
+SESSION_ID="${CLAUDE_SESSION_ID:-unknown_$(date +%s)}"
+curl -sf -X POST -H "Authorization: Bearer $MB_TOKEN" \
+  -H "Content-Type: application/json" \
+  http://localhost:8115/store -d "$(jq -cn \
+    --arg id   "$SESSION_ID" \
+    --arg url  "https://claude.ai/code/session_$SESSION_ID" \
+    --arg ttl  "<short descriptive title>" \
+    --arg body "<full plan text — structured plan + reflection + open questions + consent gates>" \
+    '{namespace:"ultraplan_inbox", key:$id,
+      value:{title:$ttl, url:$url, content:$body, ts:now|todate}}')"
+```
+
+A background poller (`neoma-ultraplan-poller.timer`, every 60s) promotes new inbox entries to `morning_briefing/next_session`, which the `session-continuity.sh` hook surfaces as the first context block in the next local CLI session. It also writes `/run/user/1000/neoma-session-inbox/ultraplan-latest.md` for mid-session visibility.
+
+If you are a remote `/ultraplan` session reading this doc: you are the upstream half of a bridge. Close the loop.
+
 ## Future work
 
 When we're ready to actually codify ultraplan as a skill (not just a conversational ritual), this file becomes the entry point. The skill would:
